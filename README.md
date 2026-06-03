@@ -56,6 +56,19 @@ uv run python run_misotts.py
 
 The script writes `full_conversation.wav` in the repository root.
 
+To change the output path, target device, model source, or sampling settings,
+run:
+
+```bash
+uv run python run_misotts.py --help
+```
+
+For example:
+
+```bash
+uv run python run_misotts.py --device cuda:0 --output sample.wav --max-audio-length-ms 8000
+```
+
 With `pip` instead of `uv`:
 
 ```bash
@@ -198,6 +211,13 @@ Hugging Face cache resumes from files that already completed.
 Miso TTS 8B is a large model. For best results, use a CUDA GPU with sufficient
 VRAM for the checkpoint precision you are loading. The default inference path
 uses `torch.bfloat16`.
+
+The public Hugging Face checkpoint is about 32.8 GB on disk. With the default
+`torch.bfloat16` inference path, plan for a 24 GB CUDA GPU or larger to leave
+room for model weights, KV caches, the Mimi audio tokenizer, and watermarking.
+Smaller GPUs may run out of memory. The loader reads the checkpoint on CPU
+before moving the model to the target device, so also make sure the host has
+enough system RAM and free disk space for the model cache.
 
 ---
 
