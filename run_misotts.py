@@ -1,25 +1,88 @@
+import argparse
 import os
+from typing import Sequence
 
 os.environ.setdefault("HF_HUB_ETAG_TIMEOUT", "60")
 os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "60")
-
-import torch
-import torchaudio  # type: ignore
-from generator import DEFAULT_MISO_TTS_REPO_ID, Segment, load_miso_8b
 
 # Disable Triton compilation
 os.environ["NO_TORCH_COMPILE"] = "1"
 
 
-def main():
+def _positive_float(value: str) -> float:
+    parsed = float(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than 0")
+    return parsed
+
+
+def _positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than 0")
+    return parsed
+
+
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Generate the example Miso TTS conversation.")
+    parser.add_argument(
+        "--model",
+        default=os.environ.get("MISO_TTS_8B_MODEL"),
+        help="Local checkpoint path or Hugging Face repo id. Defaults to MISO_TTS_8B_MODEL or MisoLabs/MisoTTS.",
+    )
+    parser.add_argument(
+        "--device",
+        default="auto",
+        help="Inference device, for example auto, cuda, cuda:0, or cpu. Defaults to auto.",
+    )
+    parser.add_argument(
+        "--output",
+        default="full_conversation.wav",
+        help="Output WAV path. Defaults to full_conversation.wav.",
+    )
+    parser.add_argument(
+        "--max-audio-length-ms",
+        type=_positive_float,
+        default=10_000,
+        help="Maximum generated audio length per utterance in milliseconds. Defaults to 10000.",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=_positive_float,
+        default=0.9,
+        help="Sampling temperature. Defaults to 0.9.",
+    )
+    parser.add_argument(
+        "--topk",
+        type=_positive_int,
+        default=50,
+        help="Top-k sampling value. Defaults to 50.",
+    )
+    return parser.parse_args(argv)
+
+
+def resolve_device(device: str) -> str:
+    if device != "auto":
+        return device
+
+    import torch
+
     # Select the best available device, skipping MPS due to float64 limitations.
     if torch.cuda.is_available():
-        device = "cuda"
-    else:
-        device = "cpu"
+        return "cuda"
+    return "cpu"
+
+
+def main():
+    args = parse_args()
+    device = resolve_device(args.device)
     print(f"Using device: {device}")
 
-    model_source = os.environ.get("MISO_TTS_8B_MODEL", DEFAULT_MISO_TTS_REPO_ID)
+    import torch
+    import torchaudio  # type: ignore
+    from generator import DEFAULT_MISO_TTS_REPO_ID, Segment, load_miso_8b
+
+    model_source = args.model or DEFAULT_MISO_TTS_REPO_ID
     if os.path.exists(model_source):
         print(f"Loading Miso TTS model from local path: {model_source}")
     else:
@@ -29,7 +92,7 @@ def main():
         )
         print("The model will be downloaded and cached automatically if it is not already present.")
 
-    generator = load_miso_8b(device, model_path_or_repo_id=model_source)
+    generator = load_miso_8b(device=device, model_path_or_repo_id=model_source)
 
     conversation = [
         {"text": "I'm just honestly not that into him, you know?", "speaker_id": 0},
@@ -51,7 +114,9 @@ def main():
             text=utterance["text"],
             speaker=utterance["speaker_id"],
             context=generated_segments,
-            max_audio_length_ms=10_000,
+            max_audio_length_ms=args.max_audio_length_ms,
+            temperature=args.temperature,
+            topk=args.topk,
         )
         generated_segments.append(
             Segment(
@@ -63,11 +128,11 @@ def main():
 
     all_audio = torch.cat([seg.audio for seg in generated_segments], dim=0)
     torchaudio.save(
-        "full_conversation.wav",
+        args.output,
         all_audio.unsqueeze(0).cpu(),
         generator.sample_rate,
     )
-    print("Successfully generated full_conversation.wav")
+    print(f"Successfully generated {args.output}")
 
 
 if __name__ == "__main__":
