@@ -1,0 +1,13 @@
+# Clip Timestamps
+# Format: CLIP_NUM | START | END | HOOK_REASON
+
+01 | 00:00:03 | 00:00:21 | just-do-it-opener
+02 | 00:00:07 | 00:00:18 | dreams-vs-reality
+03 | 00:00:14 | 00:00:26 | make-dreams-come-true
+04 | 00:00:22 | 00:00:35 | wake-up-work-hard
+05 | 00:00:24 | 00:00:38 | nothing-is-impossible
+06 | 00:00:30 | 00:00:43 | push-past-quitting-point
+07 | 00:00:33 | 00:00:51 | what-are-you-waiting-for
+08 | 00:00:38 | 00:00:51 | yes-you-can
+09 | 00:00:43 | 00:01:00 | just-do-it-climax
+10 | 00:00:52 | 00:01:00 | stop-giving-up-closer
