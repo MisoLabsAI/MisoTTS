@@ -17,11 +17,20 @@ def cli_check_audio() -> None:
     check_audio_from_file(args.audio_path)
 
 
-def load_watermarker(device: str = "cuda") -> silentcipher.server.Model:
+def _get_default_device() -> str:
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+def load_watermarker(device: str | None = None) -> silentcipher.server.Model:
+    resolved_device = device or "cpu"
     try:
         model = silentcipher.get_model(
             model_type="44.1k",
-            device=device,
+            device=resolved_device,
         )
     except Exception as exc:
         raise RuntimeError(
@@ -40,12 +49,15 @@ def watermark(
     sample_rate: int,
     watermark_key: list[int],
 ) -> tuple[torch.Tensor, int]:
-    audio_array_44khz = torchaudio.functional.resample(audio_array, orig_freq=sample_rate, new_freq=44100)
+    original_device = audio_array.device
+    # Watermarker runs on CPU; move audio there and back
+    audio_array_cpu = audio_array.cpu()
+    audio_array_44khz = torchaudio.functional.resample(audio_array_cpu, orig_freq=sample_rate, new_freq=44100)
     encoded, _ = watermarker.encode_wav(audio_array_44khz, 44100, watermark_key, calc_sdr=False, message_sdr=36)
 
     output_sample_rate = min(44100, sample_rate)
     encoded = torchaudio.functional.resample(encoded, orig_freq=44100, new_freq=output_sample_rate)
-    return encoded, output_sample_rate
+    return encoded.to(original_device), output_sample_rate
 
 
 @torch.inference_mode()
@@ -68,7 +80,7 @@ def verify(
 
 
 def check_audio_from_file(audio_path: str) -> None:
-    watermarker = load_watermarker(device="cuda")
+    watermarker = load_watermarker()
 
     audio_array, sample_rate = load_audio(audio_path)
     is_watermarked = verify(watermarker, audio_array, sample_rate, MISO_TTS_WATERMARK)

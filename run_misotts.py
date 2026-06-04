@@ -3,6 +3,9 @@ import os
 os.environ.setdefault("HF_HUB_ETAG_TIMEOUT", "60")
 os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "60")
 
+# MPS fallback for unimplemented ops (e.g., aten::unfold_backward)
+os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+
 import torch
 import torchaudio  # type: ignore
 from generator import DEFAULT_MISO_TTS_REPO_ID, Segment, load_miso_8b
@@ -12,9 +15,10 @@ os.environ["NO_TORCH_COMPILE"] = "1"
 
 
 def main():
-    # Select the best available device, skipping MPS due to float64 limitations.
     if torch.cuda.is_available():
         device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
     else:
         device = "cpu"
     print(f"Using device: {device}")

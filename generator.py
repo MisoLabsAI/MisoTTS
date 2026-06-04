@@ -61,7 +61,7 @@ class Generator:
         mimi.set_num_codebooks(self._model.config.audio_num_codebooks)
         self._audio_tokenizer = mimi
 
-        self._watermarker = load_watermarker(device=device)
+        self._watermarker = load_watermarker()
 
         self.sample_rate = mimi.sample_rate
         self.device = device
@@ -228,11 +228,27 @@ def _load_model(
     return model
 
 
+def _get_default_device() -> str:
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+def _get_default_dtype(device: str) -> torch.dtype:
+    if device == "mps":
+        return torch.float32
+    return torch.bfloat16
+
+
 def load_miso_8b(
-    device: str = "cuda",
+    device: Optional[str] = None,
     model_path_or_repo_id: Optional[str] = None,
-    dtype: torch.dtype = torch.bfloat16,
+    dtype: Optional[torch.dtype] = None,
 ) -> Generator:
+    resolved_device = device or _get_default_device()
+    resolved_dtype = dtype or _get_default_dtype(resolved_device)
     source = model_path_or_repo_id or os.environ.get("MISO_TTS_8B_MODEL", DEFAULT_MISO_TTS_REPO_ID)
-    model = _load_model(source, MISO_TTS_8B_CONFIG, device=device, dtype=dtype)
+    model = _load_model(source, MISO_TTS_8B_CONFIG, device=resolved_device, dtype=resolved_dtype)
     return Generator(model)
