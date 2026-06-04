@@ -34,9 +34,9 @@ ffmpeg -y -ss 13 -i "$VIDEO" -t 2 -vf "$CROP" $ENCODE clips/clip_6_hold.mp4
 
 echo "Stitching final edit..."
 CONCAT=$(mktemp /tmp/concat_XXXXXX.txt)
-echo "file '$(realpath clips/clip_1_hook.mp4)'" >> "$CONCAT"
-echo "file '$(realpath clips/clip_4_drop.mp4)'" >> "$CONCAT"
-echo "file '$(realpath clips/clip_6_hold.mp4)'" >> "$CONCAT"
+echo "file '$(pwd)/clips/clip_1_hook.mp4'" >> "$CONCAT"
+echo "file '$(pwd)/clips/clip_4_drop.mp4'" >> "$CONCAT"
+echo "file '$(pwd)/clips/clip_6_hold.mp4'" >> "$CONCAT"
 
 ffmpeg -y -f concat -safe 0 -i "$CONCAT" -c copy clips/final_steveaoki.mp4
 rm "$CONCAT"
