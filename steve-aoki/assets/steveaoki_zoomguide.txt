@@ -1,0 +1,59 @@
+==============================
+CAPCUT ZOOM CUT GUIDE
+Steve Aoki x Bieber Remix TikTok Edit
+Target Length: 12 to 15 seconds
+==============================
+
+CLIP 1 — 0:00 to 0:03 (HOOK)
+> Use your strongest crowd wide shot or Aoki behind decks
+> No zoom, static or slow push in
+> Hook SRT text is doing the work here
+> Cut hard at 0:03
+
+CLIP 2 — 0:03 to 0:05 (BUILD)
+> Cut to crowd close up or hands in the air shot
+> Apply slow zoom in (CapCut: Scale keyframe from 100% to 115% over 2 seconds)
+> Energy is building, keep it tight
+
+CLIP 3 — 0:05 to 0:06.5 (PRE DROP)
+> Quick cut to Aoki on decks, head down or hand on fader
+> Fast zoom in punch (Scale jump to 125% instantly)
+> Add a subtle bass shake effect if CapCut has it
+
+CUT — 0:06.5 (THE DROP)
+> Hard cut on the beat
+> This is your most powerful cut in the whole edit
+> If you have a confetti or crowd explosion shot, this is where it goes
+
+CLIP 4 — 0:06.5 to 0:10 (DROP PAYOFF)
+> Crowd going insane, wide shot preferred
+> Apply zoom out effect (Scale from 130% back to 100% over 3 seconds)
+> Feels like the camera is pulling back to show the scale of the moment
+
+CLIP 5 — 0:10 to 0:13 (REACTION + CTA)
+> Any crowd reaction close up or Aoki celebrating
+> Slow zoom in again, subtle
+> CTA text overlay fades in at 0:12
+
+CLIP 6 — 0:13 to 0:15 (HOLD)
+> Hold on your strongest visual
+> Let the SRT caption tag fade out
+> Loop point — make sure first and last frame feel connected
+
+==============================
+CAPCUT SETTINGS TO USE
+==============================
+> Font: Bold, all caps, white with black stroke 3px
+> Text animation: Scale in (pop) on entry, fade on exit
+> Beat sync: Use CapCut Auto Beat Sync if available
+> Color grade: Apply the soft_pastel_cinematic.cube LUT we generated
+> Speed: Keep natural, no speed ramps needed at this length
+> Aspect ratio: 9:16 vertical for TikTok
+
+==============================
+EXPORT SETTINGS
+==============================
+> Resolution: 1080 x 1920
+> Frame rate: 30fps
+> Quality: Highest available
+> No watermark (turn off CapCut watermark in settings before export)
