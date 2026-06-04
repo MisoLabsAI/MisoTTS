@@ -119,7 +119,12 @@ import torchaudio
 
 from generator import load_miso_8b
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+if torch.cuda.is_available():
+    device = "cuda"
+elif torch.backends.mps.is_available():
+    device = "mps"
+else:
+    device = "cpu"
 
 generator = load_miso_8b(
     device=device,
@@ -147,7 +152,7 @@ import torchaudio
 
 from generator import Segment, load_miso_8b
 
-generator = load_miso_8b(device="cuda")
+generator = load_miso_8b()
 
 prompt_audio, sample_rate = torchaudio.load("prompt.wav")
 prompt_audio = torchaudio.functional.resample(
@@ -197,7 +202,7 @@ Hugging Face cache resumes from files that already completed.
 
 Miso TTS 8B is a large model. For best results, use a CUDA GPU with sufficient
 VRAM for the checkpoint precision you are loading. The default inference path
-uses `torch.bfloat16`.
+uses `torch.bfloat16` on CUDA and `torch.float16` on MPS (Apple Silicon).
 
 ---
 

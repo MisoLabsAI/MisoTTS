@@ -17,11 +17,20 @@ def cli_check_audio() -> None:
     check_audio_from_file(args.audio_path)
 
 
-def load_watermarker(device: str = "cuda") -> silentcipher.server.Model:
+def _get_default_device() -> str:
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+def load_watermarker(device: str | None = None) -> silentcipher.server.Model:
+    resolved_device = device or _get_default_device()
     try:
         model = silentcipher.get_model(
             model_type="44.1k",
-            device=device,
+            device=resolved_device,
         )
     except Exception as exc:
         raise RuntimeError(
@@ -68,7 +77,7 @@ def verify(
 
 
 def check_audio_from_file(audio_path: str) -> None:
-    watermarker = load_watermarker(device="cuda")
+    watermarker = load_watermarker()
 
     audio_array, sample_rate = load_audio(audio_path)
     is_watermarked = verify(watermarker, audio_array, sample_rate, MISO_TTS_WATERMARK)

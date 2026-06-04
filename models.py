@@ -78,7 +78,7 @@ def _index_causal_mask(mask: torch.Tensor, input_pos: torch.Tensor):
     return r
 
 
-def _multinomial_sample_one_no_sync(probs):  # Does multinomial sampling without a cuda synchronization
+def _multinomial_sample_one_no_sync(probs):  # Does multinomial sampling without a device synchronization
     q = torch.empty_like(probs).exponential_(1)
     return torch.argmax(probs / q, dim=-1, keepdim=True).to(dtype=torch.int)
 
@@ -148,6 +148,8 @@ class Model(
 
         self.backbone.setup_caches(max_batch_size, dtype)
         self.decoder.setup_caches(max_batch_size, dtype, decoder_max_seq_len=self.config.audio_num_codebooks)
+
+        self.to(device)
 
         self.register_buffer("backbone_causal_mask", _create_causal_mask(self.backbone.max_seq_len, device))
         self.register_buffer("decoder_causal_mask", _create_causal_mask(self.config.audio_num_codebooks, device))
