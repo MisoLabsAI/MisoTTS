@@ -26,7 +26,7 @@ def _get_default_device() -> str:
 
 
 def load_watermarker(device: str | None = None) -> silentcipher.server.Model:
-    resolved_device = device or _get_default_device()
+    resolved_device = device or "cpu"
     try:
         model = silentcipher.get_model(
             model_type="44.1k",
@@ -49,12 +49,15 @@ def watermark(
     sample_rate: int,
     watermark_key: list[int],
 ) -> tuple[torch.Tensor, int]:
-    audio_array_44khz = torchaudio.functional.resample(audio_array, orig_freq=sample_rate, new_freq=44100)
+    original_device = audio_array.device
+    # Watermarker runs on CPU; move audio there and back
+    audio_array_cpu = audio_array.cpu()
+    audio_array_44khz = torchaudio.functional.resample(audio_array_cpu, orig_freq=sample_rate, new_freq=44100)
     encoded, _ = watermarker.encode_wav(audio_array_44khz, 44100, watermark_key, calc_sdr=False, message_sdr=36)
 
     output_sample_rate = min(44100, sample_rate)
     encoded = torchaudio.functional.resample(encoded, orig_freq=44100, new_freq=output_sample_rate)
-    return encoded, output_sample_rate
+    return encoded.to(original_device), output_sample_rate
 
 
 @torch.inference_mode()

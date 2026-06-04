@@ -61,7 +61,7 @@ class Generator:
         mimi.set_num_codebooks(self._model.config.audio_num_codebooks)
         self._audio_tokenizer = mimi
 
-        self._watermarker = load_watermarker(device=device)
+        self._watermarker = load_watermarker()
 
         self.sample_rate = mimi.sample_rate
         self.device = device
@@ -238,7 +238,7 @@ def _get_default_device() -> str:
 
 def _get_default_dtype(device: str) -> torch.dtype:
     if device == "mps":
-        return torch.float16
+        return torch.float32
     return torch.bfloat16
 
 

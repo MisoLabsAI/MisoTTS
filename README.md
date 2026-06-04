@@ -202,7 +202,7 @@ Hugging Face cache resumes from files that already completed.
 
 Miso TTS 8B is a large model. For best results, use a CUDA GPU with sufficient
 VRAM for the checkpoint precision you are loading. The default inference path
-uses `torch.bfloat16` on CUDA and `torch.float16` on MPS (Apple Silicon).
+uses `torch.bfloat16` on CUDA and `torch.float32` on MPS (Apple Silicon).
 
 ---
 
