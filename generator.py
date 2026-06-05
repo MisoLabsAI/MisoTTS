@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple
 
 os.environ.setdefault("HF_HUB_ETAG_TIMEOUT", "60")
 os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "60")
+os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 
 import torch
 import torchaudio
