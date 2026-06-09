@@ -194,6 +194,20 @@ def _state_dict_from_checkpoint(checkpoint: object) -> dict[str, torch.Tensor]:
     return state_dict
 
 
+def _default_dtype_for_device(device: str) -> torch.dtype:
+    """Pick a sane default dtype for the target device.
+
+    Checkpoint weights are stored as fp32. bf16 is a worthwhile speed/memory
+    trade-off on CUDA, but on CPU (and MPS) it has no such upside and, because
+    audio generation is autoregressive, small bf16/fp32 rounding differences
+    compound frame-over-frame and produce audibly divergent output. Default to
+    fp32 everywhere except CUDA. Callers can still pass an explicit dtype.
+    """
+    if torch.device(device).type == "cuda":
+        return torch.bfloat16
+    return torch.float32
+
+
 def _load_model(
     model_path_or_repo_id: str,
     config: ModelArgs,
@@ -231,8 +245,10 @@ def _load_model(
 def load_miso_8b(
     device: str = "cuda",
     model_path_or_repo_id: Optional[str] = None,
-    dtype: torch.dtype = torch.bfloat16,
+    dtype: Optional[torch.dtype] = None,
 ) -> Generator:
+    if dtype is None:
+        dtype = _default_dtype_for_device(device)
     source = model_path_or_repo_id or os.environ.get("MISO_TTS_8B_MODEL", DEFAULT_MISO_TTS_REPO_ID)
     model = _load_model(source, MISO_TTS_8B_CONFIG, device=device, dtype=dtype)
     return Generator(model)
