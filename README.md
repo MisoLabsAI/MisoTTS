@@ -202,6 +202,11 @@ Miso TTS 8B is a **large** model (~8.2B parameters across the backbone, audio
 decoder, embeddings, and heads). It is **not** a lightweight CPU model — plan for
 a high-VRAM GPU for interactive use.
 
+> **Latency note:** Public discussions of `110 ms` latency refer to the hosted
+> production API's time-to-first-byte (TTFB) on H100-class hardware, not to the
+> unoptimized local inference path in this repository. Expect materially slower
+> startup and generation latency on consumer or workstation GPUs.
+
 The numbers below are approximate and cover the model weights plus headroom for
 the Mimi codec, the SilentCipher watermarker, the KV cache, and activations.
 
