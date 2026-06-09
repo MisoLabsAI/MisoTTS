@@ -51,6 +51,8 @@ class Generator:
     ):
         self._model = model
         self._model.setup_caches(1)
+        device = next(model.parameters()).device
+        self._model.to(device=device)
 
         self._text_tokenizer = load_llama3_tokenizer()
         self._frame_size = self._model.config.audio_num_codebooks + 1
