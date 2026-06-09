@@ -175,6 +175,34 @@ audio = generator.generate(
 )
 ```
 
+### Streaming generation
+
+Use `generate_stream()` to receive PCM chunks while frames are still being
+generated. The default `chunk_frames=25` yields about two seconds of 24 kHz
+audio per chunk.
+Chunks are watermarked independently; if SilentCipher rejects a very short
+terminal fragment, that fragment is yielded unchanged.
+
+```python
+import torch
+
+from generator import load_miso_8b
+
+generator = load_miso_8b(device="cuda")
+
+chunks = []
+for chunk in generator.generate_stream(
+    text="This sentence is decoded in chunks.",
+    speaker=0,
+    context=[],
+    max_audio_length_ms=10_000,
+    chunk_frames=25,
+):
+    chunks.append(chunk.cpu())
+
+audio = torch.cat(chunks, dim=0)
+```
+
 ---
 
 ## Weights
