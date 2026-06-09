@@ -165,7 +165,24 @@ class Generator:
             ).unsqueeze(1)
             curr_pos = curr_pos[:, -1:] + 1
 
-        audio = self._audio_tokenizer.decode(torch.stack(samples).permute(1, 2, 0)).squeeze(0).squeeze(0)
+        if not samples:
+            # Model emitted EOS on the very first frame: nothing to decode.
+            return torch.zeros(0, device=self.device)
+
+        # (batch=1, num_codebooks, num_frames)
+        frames = torch.stack(samples).permute(1, 2, 0)
+
+        # The codebook heads produce logits over `audio_vocab_size` (2051) entries,
+        # but Mimi can only decode raw codec IDs in [0, cardinality - 1] (2048 ->
+        # 0..2047). The extra IDs are non-codec special tokens; if one is ever
+        # sampled (top-k sampling makes this possible) it would index outside
+        # Mimi's codebooks and crash decode or emit garbage. Clamp into the
+        # decodable range as a defensive guard.
+        max_codec_id = self._audio_tokenizer.cardinality - 1
+        if (frames > max_codec_id).any():
+            frames = frames.clamp(0, max_codec_id)
+
+        audio = self._audio_tokenizer.decode(frames).squeeze(0).squeeze(0)
 
         # This applies an imperceptible watermark to identify audio as AI-generated.
         # If using Miso TTS in another application, use your own private key and keep it secret.
