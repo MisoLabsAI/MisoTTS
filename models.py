@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import contextlib
 import io
+import types
 from typing import Tuple
 
 import torch
@@ -101,6 +102,29 @@ def _masked_cross_entropy(logits, targets, mask, vocab_size):
     weights = mask.reshape(-1).to(losses.dtype)
     total = weights.sum().clamp_min(1.0)
     return (losses * weights).sum() / total, total
+
+
+def _linear_fp32(linear: nn.Linear, x: torch.Tensor) -> torch.Tensor:
+    bias = None if linear.bias is None else linear.bias.float()
+    return F.linear(x.float(), linear.weight.float(), bias)
+
+
+def apply_mps_bf16_layer0_mlp_fp32_guard(model: nn.Module) -> None:
+    """Run only the first backbone MLP matmuls in FP32 without changing state_dict keys."""
+    mlp = model.backbone.layers[0].mlp
+    if getattr(mlp, "_miso_mps_bf16_layer0_mlp_fp32_guard", False):
+        return
+
+    def forward_fp32_guard(self, x: torch.Tensor) -> torch.Tensor:
+        orig_dtype = x.dtype
+        h = self.activation(_linear_fp32(self.w1, x))
+        if self.w3 is not None:
+            h = h * _linear_fp32(self.w3, x)
+        h = _linear_fp32(self.w2, h)
+        return h.to(dtype=orig_dtype)
+
+    mlp.forward = types.MethodType(forward_fp32_guard, mlp)
+    mlp._miso_mps_bf16_layer0_mlp_fp32_guard = True
 
 
 @dataclass

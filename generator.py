@@ -8,7 +8,7 @@ os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "60")
 import torch
 import torchaudio
 from huggingface_hub import hf_hub_download
-from models import MISO_TTS_8B_CONFIG, Model, ModelArgs
+from models import MISO_TTS_8B_CONFIG, Model, ModelArgs, apply_mps_bf16_layer0_mlp_fp32_guard
 from moshi_compat import patch_bitsandbytes_import_for_unquantized_layers
 from moshi.models import loaders
 from tokenizers.processors import TemplateProcessing
@@ -16,6 +16,7 @@ from transformers import AutoTokenizer
 from watermarking import MISO_TTS_WATERMARK, load_watermarker, watermark
 
 DEFAULT_MISO_TTS_REPO_ID = "MisoLabs/MisoTTS"
+DISABLE_MPS_BF16_LAYER0_MLP_FP32_ENV = "MISO_DISABLE_MPS_BF16_LAYER0_MLP_FP32"
 patch_bitsandbytes_import_for_unquantized_layers()
 
 
@@ -42,6 +43,18 @@ def load_llama3_tokenizer():
     )
 
     return tokenizer
+
+
+def _should_apply_mps_bf16_layer0_mlp_fp32_guard(
+    device: str,
+    dtype: torch.dtype,
+    enabled: Optional[bool],
+) -> bool:
+    if enabled is not None:
+        return enabled
+
+    disabled = os.environ.get(DISABLE_MPS_BF16_LAYER0_MLP_FP32_ENV, "").lower() in {"1", "true", "yes"}
+    return torch.device(device).type == "mps" and dtype == torch.bfloat16 and not disabled
 
 
 class Generator:
@@ -199,6 +212,7 @@ def _load_model(
     config: ModelArgs,
     device: str,
     dtype: torch.dtype,
+    mps_bf16_layer0_mlp_fp32: Optional[bool] = None,
 ) -> Model:
     if os.path.isfile(model_path_or_repo_id):
         model_file = model_path_or_repo_id
@@ -224,6 +238,8 @@ def _load_model(
         raise FileNotFoundError(f"Could not resolve model checkpoint: {model_path_or_repo_id}")
 
     model.to(device=device, dtype=dtype)
+    if _should_apply_mps_bf16_layer0_mlp_fp32_guard(device, dtype, mps_bf16_layer0_mlp_fp32):
+        apply_mps_bf16_layer0_mlp_fp32_guard(model)
     model.eval()
     return model
 
@@ -232,7 +248,14 @@ def load_miso_8b(
     device: str = "cuda",
     model_path_or_repo_id: Optional[str] = None,
     dtype: torch.dtype = torch.bfloat16,
+    mps_bf16_layer0_mlp_fp32: Optional[bool] = None,
 ) -> Generator:
     source = model_path_or_repo_id or os.environ.get("MISO_TTS_8B_MODEL", DEFAULT_MISO_TTS_REPO_ID)
-    model = _load_model(source, MISO_TTS_8B_CONFIG, device=device, dtype=dtype)
+    model = _load_model(
+        source,
+        MISO_TTS_8B_CONFIG,
+        device=device,
+        dtype=dtype,
+        mps_bf16_layer0_mlp_fp32=mps_bf16_layer0_mlp_fp32,
+    )
     return Generator(model)
