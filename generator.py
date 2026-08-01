@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import os
+import warnings
 from typing import List, Optional, Tuple
 
 os.environ.setdefault("HF_HUB_ETAG_TIMEOUT", "60")
@@ -126,14 +127,46 @@ class Generator:
     ) -> torch.Tensor:
         self._model.reset_caches()
 
+        max_seq_len = 2048
         max_generation_len = int(max_audio_length_ms / 80)
-        tokens, tokens_mask = [], []
-        for segment in context:
-            segment_tokens, segment_tokens_mask = self._tokenize_segment(segment)
-            tokens.append(segment_tokens)
-            tokens_mask.append(segment_tokens_mask)
+        max_context_len = max_seq_len - max_generation_len
 
         gen_segment_tokens, gen_segment_tokens_mask = self._tokenize_text_segment(text, speaker)
+        gen_len = gen_segment_tokens.size(0)
+
+        if gen_len >= max_context_len:
+            raise ValueError(
+                f"Input text alone ({gen_len} frames) exceeds the available context budget "
+                f"({max_context_len} frames). Shorten the text or increase max_audio_length_ms."
+            )
+
+        budget = max_context_len - gen_len
+
+        # Tokenize context segments and keep track of per-segment frame counts.
+        context_tokens_list: List[Tuple[torch.Tensor, torch.Tensor]] = []
+        for segment in context:
+            seg_tokens, seg_mask = self._tokenize_segment(segment)
+            context_tokens_list.append((seg_tokens, seg_mask))
+
+        # Drop oldest segments until the context fits within the frame budget.
+        total_context_frames = sum(t.size(0) for t, _ in context_tokens_list)
+        drop_count = 0
+        while total_context_frames > budget and drop_count < len(context_tokens_list):
+            total_context_frames -= context_tokens_list[drop_count][0].size(0)
+            drop_count += 1
+
+        if drop_count > 0:
+            warnings.warn(
+                f"Context too long: dropped {drop_count} oldest segment(s) "
+                f"to fit within {max_context_len} frame limit."
+            )
+            context_tokens_list = context_tokens_list[drop_count:]
+
+        tokens, tokens_mask = [], []
+        for seg_tokens, seg_mask in context_tokens_list:
+            tokens.append(seg_tokens)
+            tokens_mask.append(seg_mask)
+
         tokens.append(gen_segment_tokens)
         tokens_mask.append(gen_segment_tokens_mask)
 
@@ -144,13 +177,6 @@ class Generator:
         curr_tokens = prompt_tokens.unsqueeze(0)
         curr_tokens_mask = prompt_tokens_mask.unsqueeze(0)
         curr_pos = torch.arange(0, prompt_tokens.size(0)).unsqueeze(0).long().to(self.device)
-
-        max_seq_len = 2048
-        max_context_len = max_seq_len - max_generation_len
-        if curr_tokens.size(1) >= max_context_len:
-            raise ValueError(
-                f"Inputs too long, must be below max_seq_len - max_generation_len: {max_context_len}"
-            )
 
         for _ in range(max_generation_len):
             sample = self._model.generate_frame(curr_tokens, curr_tokens_mask, curr_pos, temperature, topk)
