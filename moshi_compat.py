@@ -13,7 +13,10 @@ def patch_bitsandbytes_import_for_unquantized_layers() -> None:
     def linear(module: nn.Module, x: torch.Tensor, name: str = "weight") -> torch.Tensor:
         if quantize.is_quantized(module, name):
             return original_linear(module, x, name)
-        return nn.functional.linear(x, getattr(module, name))
+        # Keep the same semantics as the quantized path for ordinary layers.
+        # ``nn.functional.linear`` does not infer a module's bias, so omitting
+        # it here silently changes the output of biased unquantized layers.
+        return nn.functional.linear(x, getattr(module, name), getattr(module, "bias", None))
 
     def multi_linear(
         num_steps: int,
